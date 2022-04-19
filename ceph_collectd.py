@@ -105,12 +105,16 @@ def query_osd():
     osd_data = (jq.compile(osd_filter).input(text=pg_dump.stdout.decode("utf-8"))).all()
     print(json.dumps(osd_data))
 
-    #osds = (
-        #jq.compile(".pg_map.osd_stats[].osd")
-        #.input(text=pg_dump.stdout.decode("utf-8"))
-        #.all()
-    #)
-    #osds.sort()
+
+    for osd in osd_data:
+        print("Working on", osd["osd_id"])
+
+        percent = 0
+        if osd["total_space_kb"]:
+            percent = 100 * osd["used_space_kb"] / osd["total_space_kb"]
+
+        print("Setting", "osd-percent-full-" + str(osd["osd_id"]), "to", percent, "for", interval * 3, "seconds.")
+        r.setex("osd-percent-full-" + str(osd["osd_id"]), interval * 3, percent)
 
 
     osds = (
@@ -170,9 +174,6 @@ def query_osd():
             commit_latency,
         )
 
-        osd_percent_full_key = "osd-percent-full-" + str(osd)
-        osd_percent_full_value = percent
-        r.set(osd_percent_full_key, osd_percent_full_value)
 
         osd_space_total_key = "osd-space-total-" + str(osd)
         osd_space_total_value = space_total_kb * 1024
