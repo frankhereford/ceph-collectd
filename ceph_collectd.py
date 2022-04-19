@@ -91,16 +91,19 @@ def query_osd():
         ["sudo", "ceph", "pg", "dump", "-f", "json"], stdout=subprocess.PIPE
     )
     
-    pg_filter = """
+    osd_filter = """
     .pg_map.osd_stats[] | {
+        osd_id: .osd,
         commit_latency: .perf_stat.commit_latency_ms, 
         apply_latency: .perf_stat.apply_latency_ms, 
-        kb_used: .kb_used
+        used_space_kb: .kb_used,
+        total_space_kb: .kb,
+        available_space_kb: .kb_avail
         }
     """
 
-    data = (jq.compile(pg_filter).input(text=pg_dump.stdout.decode("utf-8"))).all()
-    print(json.dumps(data))
+    osd_data = (jq.compile(osd_filter).input(text=pg_dump.stdout.decode("utf-8"))).all()
+    print(json.dumps(osd_data))
 
     #osds = (
         #jq.compile(".pg_map.osd_stats[].osd")
