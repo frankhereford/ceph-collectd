@@ -10,10 +10,13 @@ import datasize
 import subprocess
 
 
-parser = argparse.ArgumentParser(
-        )
-parser.add_argument( "--print-cached-data", help="print straight from redis", action="store_true")
-parser.add_argument( "--query-ceph", help="get data from ceph and store in redis", action="store_true")
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--print-cached-data", help="print straight from redis", action="store_true"
+)
+parser.add_argument(
+    "--query-ceph", help="get data from ceph and store in redis", action="store_true"
+)
 args = parser.parse_args()
 
 r = redis.Redis(decode_responses=True)
@@ -134,11 +137,10 @@ def query_osd():
             f"{datasize.DataSize(space_total_kb * 1024):.2A}",
             "Percent full:",
             round(percent, 2),
-            "%", "Commit Latency:", commit_latency,
+            "%",
+            "Commit Latency:",
+            commit_latency,
         )
-
-
-
 
         osd_percent_full_key = "osd-percent-full-" + str(osd)
         osd_percent_full_value = percent
@@ -165,7 +167,6 @@ def query_osd():
 
         r.set("osd_last_query", now)
 
-
     pgs = (
         jq.compile(".pg_map.pg_stats[].pgid")
         .input(text=pg_dump.stdout.decode("utf-8"))
@@ -184,13 +185,13 @@ def query_osd():
             .first()
         )
 
-        state = state.replace('+','_')
+        state = state.replace("+", "_")
 
-        #if states.has_key(state):
+        # if states.has_key(state):
         if not state in states:
             states[state] = 0
         states[state] = states[state] + 1
-        print(pg, ":", state )
+        print(pg, ":", state)
 
     for state in states:
         pg_state_key = "pg-state-" + str(state)
