@@ -3,6 +3,7 @@
 import re
 import jq
 import sys
+import json
 import time
 import redis
 import argparse
@@ -17,6 +18,10 @@ parser.add_argument(
 parser.add_argument(
     "--query-ceph", help="get data from ceph and store in redis", action="store_true"
 )
+parser.add_argument(
+    "--no-timer", help="don't worry about the time since last query", action="store_true"
+)
+
 args = parser.parse_args()
 
 r = redis.Redis(decode_responses=True)
@@ -25,7 +30,7 @@ interval = 20
 
 
 def main() -> int:
-    if osd_age() > interval and args.query_ceph:
+    if (osd_age() > interval and args.query_ceph) or (args.no_timer and args.query_ceph):
         query_osd()
     if args.print_cached_data:
         save_osd("space-used", "Used", "osd_size")
@@ -86,13 +91,16 @@ def query_osd():
         ["sudo", "ceph", "pg", "dump", "-f", "json"], stdout=subprocess.PIPE
     )
     
-    """
+    pg_filter = """
     .pg_map.osd_stats[] | {
         commit_latency: .perf_stat.commit_latency_ms, 
         apply_latency: .perf_stat.apply_latency_ms, 
         kb_used: .kb_used
         }
     """
+
+    data = (jq.compile(pg_filter).input(text=pg_dump.stdout.decode("utf-8"))).all()
+    print(json.dumps(data))
 
     #osds = (
         #jq.compile(".pg_map.osd_stats[].osd")
