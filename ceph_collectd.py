@@ -85,6 +85,23 @@ def query_osd():
     pg_dump = subprocess.run(
         ["sudo", "ceph", "pg", "dump", "-f", "json"], stdout=subprocess.PIPE
     )
+    
+    """
+    .pg_map.osd_stats[] | {
+        commit_latency: .perf_stat.commit_latency_ms, 
+        apply_latency: .perf_stat.apply_latency_ms, 
+        kb_used: .kb_used
+        }
+    """
+
+    #osds = (
+        #jq.compile(".pg_map.osd_stats[].osd")
+        #.input(text=pg_dump.stdout.decode("utf-8"))
+        #.all()
+    #)
+    #osds.sort()
+
+
     osds = (
         jq.compile(".pg_map.osd_stats[].osd")
         .input(text=pg_dump.stdout.decode("utf-8"))
