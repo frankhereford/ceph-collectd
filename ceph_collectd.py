@@ -116,85 +116,21 @@ def query_osd():
         print("Setting", "osd-percent-full-" + str(osd["osd_id"]), "to", percent, "for", interval * 3, "seconds.")
         r.setex("osd-percent-full-" + str(osd["osd_id"]), interval * 3, percent)
 
+        print("Setting", "osd-space-total-" + str(osd["osd_id"]), "to", osd["total_space_kb"] * 1024, "for", interval * 3, "seconds.")
+        r.setex("osd-space-total-" + str(osd["osd_id"]), interval * 3, osd["total_space_kb"] * 1024)
 
-    osds = (
-        jq.compile(".pg_map.osd_stats[].osd")
-        .input(text=pg_dump.stdout.decode("utf-8"))
-        .all()
-    )
-    osds.sort()
+        print("Setting", "osd-space-used-" + str(osd["osd_id"]), "to", osd["used_space_kb"] * 1024, "for", interval * 3, "seconds.")
+        r.setex("osd-space-used-" + str(osd["osd_id"]), interval * 3, osd["used_space_kb"] * 1024)
 
-    for osd in osds:
-        space_total_kb = (
-            jq.compile(
-                ".pg_map.osd_stats[] | select(.osd == $osd) | .kb", args={"osd": osd}
-            )
-            .input(text=pg_dump.stdout.decode("utf-8"))
-            .first()
-        )
-        space_used_kb = (
-            jq.compile(
-                ".pg_map.osd_stats[] | select(.osd == $osd) | .kb_used",
-                args={"osd": osd},
-            )
-            .input(text=pg_dump.stdout.decode("utf-8"))
-            .first()
-        )
+        print("Setting", "osd-apply-latency-" + str(osd["osd_id"]), "to", osd["apply_latency"], "for", interval * 3, "seconds.")
+        r.setex("osd-apply-latency-" + str(osd["osd_id"]), interval * 3, osd["apply_latency"])
 
-        commit_latency = (
-            jq.compile(
-                ".pg_map.osd_stats[] | select(.osd == $osd) | .perf_stat.commit_latency_ms",
-                args={"osd": osd},
-            )
-            .input(text=pg_dump.stdout.decode("utf-8"))
-            .first()
-        )
+        print("Setting", "osd-commit-latency-" + str(osd["osd_id"]), "to", osd["commit_latency"], "for", interval * 3, "seconds.")
+        r.setex("osd-commit-latency-" + str(osd["osd_id"]), interval * 3, osd["commit_latency"])
 
-        apply_latency = (
-            jq.compile(
-                ".pg_map.osd_stats[] | select(.osd == $osd) | .perf_stat.apply_latency_ms",
-                args={"osd": osd},
-            )
-            .input(text=pg_dump.stdout.decode("utf-8"))
-            .first()
-        )
-
-        percent = 0
-        if space_total_kb:
-            percent = 100 * space_used_kb / space_total_kb
-        print(
-            "# Query: OSD #",
-            osd,
-            "Size:",
-            f"{datasize.DataSize(space_total_kb * 1024):.2A}",
-            "Percent full:",
-            round(percent, 2),
-            "%",
-            "Commit Latency:",
-            commit_latency,
-        )
-
-
-        osd_space_total_key = "osd-space-total-" + str(osd)
-        osd_space_total_value = space_total_kb * 1024
-        r.set(osd_space_total_key, osd_space_total_value)
-
-        osd_space_used_key = "osd-space-used-" + str(osd)
-        osd_space_used_value = space_used_kb * 1024
-        r.set(osd_space_used_key, osd_space_used_value)
-
-        osd_apply_latency_key = "osd-apply-latency-" + str(osd)
-        osd_apply_latency_value = apply_latency
-        r.set(osd_apply_latency_key, osd_apply_latency_value)
-
-        osd_commit_latency_key = "osd-commit-latency-" + str(osd)
-        osd_commit_latency_value = commit_latency
-        r.set(osd_commit_latency_key, osd_commit_latency_value)
-
-        nowf = time.time()
-        now = int(nowf)
-
-        r.set("osd_last_query", now)
+    nowf = time.time()
+    now = int(nowf)
+    r.set("osd_last_query", now)
 
     pgs = (
         jq.compile(".pg_map.pg_stats[].pgid")
