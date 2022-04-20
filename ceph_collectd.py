@@ -90,6 +90,7 @@ def osd_age():
     age = now - then
     return age
 
+
 def query_cluster():
     cluster = subprocess.run(
         ["sudo", "ceph", "status", "-f", "json"], stdout=subprocess.PIPE
@@ -217,11 +218,6 @@ def query_osd():
             interval * 3,
             osd["commit_latency"],
         )
-
-
-
-
-
 
     nowf = time.time()
     now = int(nowf)
