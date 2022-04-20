@@ -28,7 +28,7 @@ args = parser.parse_args()
 
 r = redis.Redis(decode_responses=True)
 
-interval = 20
+interval = 5 
 
 
 def main() -> int:
