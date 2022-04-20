@@ -35,6 +35,7 @@ def main() -> int:
     if (osd_age() > interval and args.query_ceph) or (
         args.no_timer and args.query_ceph
     ):
+        query_cluster()
         query_osd()
     if args.print_cached_data:
         save_osd("space-used", "Used", "osd_size")
@@ -88,6 +89,36 @@ def osd_age():
 
     age = now - then
     return age
+
+def query_cluster():
+    cluster = subprocess.run(
+        ["sudo", "ceph", "status", "-f", "json"], stdout=subprocess.PIPE
+    )
+
+    pg_filter = """
+    .pgmap.pgs_by_state[] | {
+        state_name: .state_name,
+        count: .count
+        }
+    """
+    pg_data = (jq.compile(pg_filter).input(text=cluster.stdout.decode("utf-8"))).all()
+
+    print(pg_data)
+
+    for state in pg_data:
+
+        state_name = state["state_name"].replace("+", "_")
+
+        print(
+            "Setting",
+            "pg-state-" + str(state_name),
+            "to",
+            state["count"],
+            "for",
+            interval * 3,
+            "seconds.",
+        )
+        r.setex("pg-state-" + str(state_name), interval * 3, state["count"])
 
 
 def query_osd():
@@ -187,41 +218,14 @@ def query_osd():
             osd["commit_latency"],
         )
 
+
+
+
+
+
     nowf = time.time()
     now = int(nowf)
     r.set("osd_last_query", now)
-
-    pgs = (
-        jq.compile(".pg_map.pg_stats[].pgid")
-        .input(text=pg_dump.stdout.decode("utf-8"))
-        .all()
-    )
-    pgs.sort()
-
-    states = dict()
-
-    for pg in pgs:
-        state = (
-            jq.compile(
-                ".pg_map.pg_stats[] | select(.pgid == $pg) | .state", args={"pg": pg}
-            )
-            .input(text=pg_dump.stdout.decode("utf-8"))
-            .first()
-        )
-
-        state = state.replace("+", "_")
-
-        # if states.has_key(state):
-        if not state in states:
-            states[state] = 0
-        states[state] = states[state] + 1
-        print(pg, ":", state)
-
-    for state in states:
-        pg_state_key = "pg-state-" + str(state)
-        pg_state_value = states[state]
-        print("Setting", pg_state_key, "with", pg_state_value)
-        r.setex(pg_state_key, interval * 3, pg_state_value)
 
 
 if __name__ == "__main__":
