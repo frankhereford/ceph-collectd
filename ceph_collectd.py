@@ -103,9 +103,8 @@ def query_cluster():
         count: .count
         }
     """
-    pg_data = (jq.compile(pg_filter).input(text=cluster.stdout.decode("utf-8"))).all()
 
-    print(pg_data)
+    pg_data = (jq.compile(pg_filter).input(text=cluster.stdout.decode("utf-8"))).all()
 
     for state in pg_data:
 
@@ -120,6 +119,7 @@ def query_cluster():
             interval * redis_interval_factor,
             "seconds.",
         )
+
         r.setex("pg-state-" + str(state_name), interval * redis_interval_factor, state["count"])
 
 
@@ -140,7 +140,6 @@ def query_osd():
     """
 
     osd_data = (jq.compile(osd_filter).input(text=pg_dump.stdout.decode("utf-8"))).all()
-    # print(json.dumps(osd_data))
 
     for osd in osd_data:
         print("Working on", osd["osd_id"])
