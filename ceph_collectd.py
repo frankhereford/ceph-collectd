@@ -44,8 +44,13 @@ def main() -> int:
         save_osd("apply-latency", "Apply_Latency", "apply_latency")
         save_osd("commit-latency", "Commit_Latency", "commit_latency")
         save_osd("state", "State_Count", "state")
+        save_pool_bytes()
     return 0
 
+
+def save_pool_bytes():
+    pool_num_bytes = r.get('pool-size')
+    print(f"PUTVAL titmouse/ceph/pool_size-num_bytes N:{pool_num_bytes}")
 
 
 def save_osd(slug, label, graph_name):
@@ -74,10 +79,11 @@ def save_osd(slug, label, graph_name):
             pg = m.group(1)
         data[str(pg)] = int(value)
 
-    sorted_data = []
+    sorted_data = [] # why is this here?
     for pg in sorted(data.keys()):
         sorted_data.append(data[pg])
         print(f"PUTVAL titmouse/ceph/{graph_name}-{pg}_{label} N:{data[pg]}")
+
 
 
 def osd_age():
@@ -104,6 +110,8 @@ def query_cluster():
         count: .count
         }
     """
+
+
 
     pg_data = (jq.compile(pg_filter).input(text=cluster.stdout.decode("utf-8"))).all()
 
@@ -142,9 +150,11 @@ def query_pg_dump():
     }
     """
 
-    pool_data = (jq.compile(pg_filter).input(text=pg_dump.stdout.decode("utf-8"))).all()
+    pool_data = (jq.compile(pg_filter).input(text=pg_dump.stdout.decode("utf-8"))).all()[0]
 
     print(pool_data)
+
+    r.setex("pool-size", interval * redis_interval_factor, pool_data["num_bytes"])
 
 
     osd_filter = """
