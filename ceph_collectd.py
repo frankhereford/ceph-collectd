@@ -19,7 +19,9 @@ parser.add_argument(
     "--query-ceph", help="get data from ceph and store in redis", action="store_true"
 )
 parser.add_argument(
-    "--no-timer", help="don't worry about the time since last query", action="store_true"
+    "--no-timer",
+    help="don't worry about the time since last query",
+    action="store_true",
 )
 
 args = parser.parse_args()
@@ -30,7 +32,9 @@ interval = 20
 
 
 def main() -> int:
-    if (osd_age() > interval and args.query_ceph) or (args.no_timer and args.query_ceph):
+    if (osd_age() > interval and args.query_ceph) or (
+        args.no_timer and args.query_ceph
+    ):
         query_osd()
     if args.print_cached_data:
         save_osd("space-used", "Used", "osd_size")
@@ -90,7 +94,7 @@ def query_osd():
     pg_dump = subprocess.run(
         ["sudo", "ceph", "pg", "dump", "-f", "json"], stdout=subprocess.PIPE
     )
-    
+
     osd_filter = """
     .pg_map.osd_stats[] | {
         osd_id: .osd,
@@ -103,8 +107,7 @@ def query_osd():
     """
 
     osd_data = (jq.compile(osd_filter).input(text=pg_dump.stdout.decode("utf-8"))).all()
-    print(json.dumps(osd_data))
-
+    # print(json.dumps(osd_data))
 
     for osd in osd_data:
         print("Working on", osd["osd_id"])
@@ -113,20 +116,76 @@ def query_osd():
         if osd["total_space_kb"]:
             percent = 100 * osd["used_space_kb"] / osd["total_space_kb"]
 
-        print("Setting", "osd-percent-full-" + str(osd["osd_id"]), "to", percent, "for", interval * 3, "seconds.")
+        print(
+            "Setting",
+            "osd-percent-full-" + str(osd["osd_id"]),
+            "to",
+            percent,
+            "for",
+            interval * 3,
+            "seconds.",
+        )
         r.setex("osd-percent-full-" + str(osd["osd_id"]), interval * 3, percent)
 
-        print("Setting", "osd-space-total-" + str(osd["osd_id"]), "to", osd["total_space_kb"] * 1024, "for", interval * 3, "seconds.")
-        r.setex("osd-space-total-" + str(osd["osd_id"]), interval * 3, osd["total_space_kb"] * 1024)
+        print(
+            "Setting",
+            "osd-space-total-" + str(osd["osd_id"]),
+            "to",
+            osd["total_space_kb"] * 1024,
+            "for",
+            interval * 3,
+            "seconds.",
+        )
+        r.setex(
+            "osd-space-total-" + str(osd["osd_id"]),
+            interval * 3,
+            osd["total_space_kb"] * 1024,
+        )
 
-        print("Setting", "osd-space-used-" + str(osd["osd_id"]), "to", osd["used_space_kb"] * 1024, "for", interval * 3, "seconds.")
-        r.setex("osd-space-used-" + str(osd["osd_id"]), interval * 3, osd["used_space_kb"] * 1024)
+        print(
+            "Setting",
+            "osd-space-used-" + str(osd["osd_id"]),
+            "to",
+            osd["used_space_kb"] * 1024,
+            "for",
+            interval * 3,
+            "seconds.",
+        )
+        r.setex(
+            "osd-space-used-" + str(osd["osd_id"]),
+            interval * 3,
+            osd["used_space_kb"] * 1024,
+        )
 
-        print("Setting", "osd-apply-latency-" + str(osd["osd_id"]), "to", osd["apply_latency"], "for", interval * 3, "seconds.")
-        r.setex("osd-apply-latency-" + str(osd["osd_id"]), interval * 3, osd["apply_latency"])
+        print(
+            "Setting",
+            "osd-apply-latency-" + str(osd["osd_id"]),
+            "to",
+            osd["apply_latency"],
+            "for",
+            interval * 3,
+            "seconds.",
+        )
+        r.setex(
+            "osd-apply-latency-" + str(osd["osd_id"]),
+            interval * 3,
+            osd["apply_latency"],
+        )
 
-        print("Setting", "osd-commit-latency-" + str(osd["osd_id"]), "to", osd["commit_latency"], "for", interval * 3, "seconds.")
-        r.setex("osd-commit-latency-" + str(osd["osd_id"]), interval * 3, osd["commit_latency"])
+        print(
+            "Setting",
+            "osd-commit-latency-" + str(osd["osd_id"]),
+            "to",
+            osd["commit_latency"],
+            "for",
+            interval * 3,
+            "seconds.",
+        )
+        r.setex(
+            "osd-commit-latency-" + str(osd["osd_id"]),
+            interval * 3,
+            osd["commit_latency"],
+        )
 
     nowf = time.time()
     now = int(nowf)
