@@ -37,7 +37,7 @@ def main() -> int:
         args.no_timer and args.query_ceph
     ):
         query_cluster()
-        query_osd()
+        query_pg_dump()
     if args.print_cached_data:
         save_osd("space-used", "Used", "osd_size")
         save_osd("percent-full", "Full_Percent", "osd_full")
@@ -45,6 +45,7 @@ def main() -> int:
         save_osd("commit-latency", "Commit_Latency", "commit_latency")
         save_osd("state", "State_Count", "state")
     return 0
+
 
 
 def save_osd(slug, label, graph_name):
@@ -123,10 +124,19 @@ def query_cluster():
         r.setex("pg-state-" + str(state_name), interval * redis_interval_factor, state["count"])
 
 
-def query_osd():
+def query_pg_dump():
     pg_dump = subprocess.run(
         ["sudo", "ceph", "pg", "dump", "-f", "json"], stdout=subprocess.PIPE
     )
+
+    pg_filter = """
+    .pg_map.pg_stats_delta.stat_sum | {
+
+    }
+    """
+
+    pool_data = (jq.compile(pg_filter).input(text=pg_dump.stdout.decode("utf-8"))).all()
+
 
     osd_filter = """
     .pg_map.osd_stats[] | {
