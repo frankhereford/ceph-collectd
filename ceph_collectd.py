@@ -130,12 +130,21 @@ def query_pg_dump():
     )
 
     pg_filter = """
-    .pg_map.pg_stats_delta.stat_sum | {
-
+    .pg_map.pg_stats_sum.stat_sum | {
+        num_bytes: .num_bytes,
+        num_object_copies: .num_object_copies,
+        num_object_clones: .num_object_clones,
+        num_objects_missing: .num_objects_missing,
+        num_objects_degraded: .num_objects_degraded,
+        num_objects_misplaced: .num_objects_misplaced,
+        num_objects_unfound: .num_objects_unfound,
+        num_objects_dirty: .num_objects_dirty
     }
     """
 
     pool_data = (jq.compile(pg_filter).input(text=pg_dump.stdout.decode("utf-8"))).all()
+
+    print(pool_data)
 
 
     osd_filter = """
