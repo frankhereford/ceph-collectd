@@ -29,6 +29,7 @@ args = parser.parse_args()
 r = redis.Redis(decode_responses=True)
 
 interval = 5 
+redis_interval_factor = 3
 
 
 def main() -> int:
@@ -116,10 +117,10 @@ def query_cluster():
             "to",
             state["count"],
             "for",
-            interval * 3,
+            interval * redis_interval_factor,
             "seconds.",
         )
-        r.setex("pg-state-" + str(state_name), interval * 3, state["count"])
+        r.setex("pg-state-" + str(state_name), interval * redis_interval_factor, state["count"])
 
 
 def query_osd():
@@ -154,10 +155,10 @@ def query_osd():
             "to",
             percent,
             "for",
-            interval * 3,
+            interval * redis_interval_factor,
             "seconds.",
         )
-        r.setex("osd-percent-full-" + str(osd["osd_id"]), interval * 3, percent)
+        r.setex("osd-percent-full-" + str(osd["osd_id"]), interval * redis_interval_factor, percent)
 
         print(
             "Setting",
@@ -165,12 +166,12 @@ def query_osd():
             "to",
             osd["total_space_kb"] * 1024,
             "for",
-            interval * 3,
+            interval * redis_interval_factor,
             "seconds.",
         )
         r.setex(
             "osd-space-total-" + str(osd["osd_id"]),
-            interval * 3,
+            interval * redis_interval_factor,
             osd["total_space_kb"] * 1024,
         )
 
@@ -180,12 +181,12 @@ def query_osd():
             "to",
             osd["used_space_kb"] * 1024,
             "for",
-            interval * 3,
+            interval * redis_interval_factor,
             "seconds.",
         )
         r.setex(
             "osd-space-used-" + str(osd["osd_id"]),
-            interval * 3,
+            interval * redis_interval_factor,
             osd["used_space_kb"] * 1024,
         )
 
@@ -195,12 +196,12 @@ def query_osd():
             "to",
             osd["apply_latency"],
             "for",
-            interval * 3,
+            interval * redis_interval_factor,
             "seconds.",
         )
         r.setex(
             "osd-apply-latency-" + str(osd["osd_id"]),
-            interval * 3,
+            interval * redis_interval_factor,
             osd["apply_latency"],
         )
 
@@ -210,12 +211,12 @@ def query_osd():
             "to",
             osd["commit_latency"],
             "for",
-            interval * 3,
+            interval * redis_interval_factor,
             "seconds.",
         )
         r.setex(
             "osd-commit-latency-" + str(osd["osd_id"]),
-            interval * 3,
+            interval * redis_interval_factor,
             osd["commit_latency"],
         )
 
