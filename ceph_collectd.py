@@ -64,9 +64,7 @@ def save_osd(slug, label, graph_name):
             osd = m.group(1)
         data[int(osd)] = float(value)
 
-    sorted_data = []
     for osd in sorted(data.keys()):
-        sorted_data.append(data[osd])
         print(f"PUTVAL titmouse/ceph/{graph_name}-{osd:02}_{label} N:{data[osd]}")
 
     data = {}
@@ -79,9 +77,7 @@ def save_osd(slug, label, graph_name):
             pg = m.group(1)
         data[str(pg)] = int(value)
 
-    sorted_data = [] # why is this here?
     for pg in sorted(data.keys()):
-        sorted_data.append(data[pg])
         print(f"PUTVAL titmouse/ceph/{graph_name}-{pg}_{label} N:{data[pg]}")
 
 
@@ -150,9 +146,8 @@ def query_pg_dump():
     }
     """
 
+    # this is actually file system data
     pool_data = (jq.compile(pg_filter).input(text=pg_dump.stdout.decode("utf-8"))).all()[0]
-
-    print(pool_data)
 
     r.setex("pool-size", interval * redis_interval_factor, pool_data["num_bytes"])
 
