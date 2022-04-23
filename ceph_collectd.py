@@ -1,4 +1,4 @@
-#!/home/frank/lagoon/collectd/venv/bin/python
+#!/home/frank/lagoon/ceph-collectd/venv/bin/python
 
 import re
 import jq
@@ -6,10 +6,12 @@ import sys
 import json
 import time
 import redis
+import pprint
 import argparse
 import datasize
 import subprocess
 
+pp = pprint.PrettyPrinter(indent=2)
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -38,6 +40,7 @@ def main() -> int:
     ):
         query_cluster()
         query_pg_dump()
+        query_rados_df()
     if args.print_cached_data:
         save_osd("space-used", "Used", "osd_size")
         save_osd("percent-full", "Full_Percent", "osd_full")
@@ -47,6 +50,35 @@ def main() -> int:
         save_pool_bytes()
     return 0
 
+
+def query_rados_df():
+    cluster = subprocess.run(
+        ["sudo", "rados", "df", "-f", "json"], stdout=subprocess.PIPE
+    )
+
+    jq_filter = """
+    .pools[]
+    """
+    #| { "num_objects": sum(.num_objects) }  
+
+      #{ num_objects: sum(.num_objects) } 
+    #reduce .[] as $item (0; . + $item)
+
+    rados_data = (jq.compile(jq_filter).input(text=cluster.stdout.decode("utf-8"))).all()
+    pp.pprint(rados_data)
+
+    healthy = 0
+    misplaced = 0
+    degraded = 0
+    unfound = 0
+
+    for pool in rados_data:
+        healthy = healthy + pool["num_objects"]
+        misplaced = healthy + pool["num_object_copies"]
+
+    print("healthy:", healthy)
+    print("misplaced:", misplaced)
+    print(misplaced / healthy, "%")
 
 def save_pool_bytes():
     pool_num_bytes = r.get('pool-size')
@@ -106,8 +138,6 @@ def query_cluster():
         count: .count
         }
     """
-
-
 
     pg_data = (jq.compile(pg_filter).input(text=cluster.stdout.decode("utf-8"))).all()
 
