@@ -40,7 +40,7 @@ def main() -> int:
     ):
         query_cluster()
         query_pg_dump()
-        query_rados_df()
+        #query_rados_df()
     if args.print_cached_data:
         save_osd("space-used", "Used", "osd_size")
         save_osd("percent-full", "Full_Percent", "osd_full")
@@ -156,6 +156,16 @@ def query_cluster():
         )
 
         r.setex("pg-state-" + str(state_name), interval * redis_interval_factor, state["count"])
+
+    pg_filter = """
+    .pgmap.pgs_by_state[] | {
+        state_name: .state_name,
+        count: .count
+        }
+    """
+
+    pg_data = (jq.compile(pg_filter).input(text=cluster.stdout.decode("utf-8"))).all()
+
 
 
 def query_pg_dump():
