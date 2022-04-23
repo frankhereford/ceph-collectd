@@ -48,6 +48,8 @@ def main() -> int:
         save_osd("commit-latency", "Commit_Latency", "commit_latency")
         save_osd("state", "State_Count", "state")
         save_pool_bytes()
+        save_object_counts()
+        save_object_ratio()
     return 0
 
 
@@ -79,6 +81,16 @@ def query_rados_df():
     print("healthy:", healthy)
     print("misplaced:", misplaced)
     print(misplaced / healthy, "%")
+
+def save_object_ratio():
+    misplaced_ratio = float(r.get('objects-misplaced_ratio')) * 100
+    print(f"PUTVAL titmouse/ceph/misplaced_ratio N:{misplaced_ratio}")
+
+def save_object_counts():
+    number_of_objects = r.get('objects-number_objects')
+    print(f"PUTVAL titmouse/ceph/objects-number_objects N:{number_of_objects}")
+    number_of_misplaced_objects = r.get('objects-misplaced_objects')
+    print(f"PUTVAL titmouse/ceph/objects-number_misplaced_objects N:{number_of_misplaced_objects}")
 
 def save_pool_bytes():
     pool_num_bytes = r.get('pool-size')
@@ -158,14 +170,17 @@ def query_cluster():
         r.setex("pg-state-" + str(state_name), interval * redis_interval_factor, state["count"])
 
     pg_filter = """
-    .pgmap.pgs_by_state[] | {
-        state_name: .state_name,
-        count: .count
+    .pgmap | {
+        num_objects: .num_objects,
+        misplaced_objects: .misplaced_objects,
+        misplaced_ratio: .misplaced_ratio
         }
     """
+    pg_data = (jq.compile(pg_filter).input(text=cluster.stdout.decode("utf-8"))).all()[0]
 
-    pg_data = (jq.compile(pg_filter).input(text=cluster.stdout.decode("utf-8"))).all()
-
+    r.setex("objects-number_objects", interval * redis_interval_factor, pg_data["num_objects"])
+    r.setex("objects-misplaced_objects", interval * redis_interval_factor, pg_data["misplaced_objects"])
+    r.setex("objects-misplaced_ratio", interval * redis_interval_factor, pg_data["misplaced_ratio"])
 
 
 def query_pg_dump():
